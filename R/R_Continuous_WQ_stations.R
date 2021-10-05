@@ -1,3 +1,6 @@
+## Script to create figures for water quality data for the 2021 Summer-Fall Action Report
+# Including maps
+
 library(tidyverse)
 library(lubridate)
 library(grid)
@@ -93,6 +96,12 @@ CDEC_stations$Latitude<-as.numeric(CDEC_stations$Latitude)
 CDEC_stations$Longitude<-CDEC_stations$Longitude*(-1)
 str(CDEC_stations)
 
+## Add Tule Red location since it's not up online
+#Using add_row() function to add observation to data frame  
+CDEC_stations <- CDEC_stations %>% add_row(station_id="TRB",
+                                           Longitude=-121.9960145,
+                                           Latitude=38.133841) 
+
 # make the coordinate cols spatial (X/Easting/lon, Y/Northing/lat)
 crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
 df.SP <- st_as_sf(CDEC_stations, coords = c("Longitude", "Latitude"), crs = crsLONGLAT)
@@ -112,7 +121,7 @@ water_quality_map<-ggplot() + theme_bw()+
   geom_sf(data = bay, fill = 'grey', lwd = 0.5, color='black') +
   geom_sf(data=df.SP,color="red",size=3)+ 
   geom_label_repel(data=df.SP, aes(x=Longitude,y=Latitude,label=station_id),min.segment.length = unit(0, 'lines'),segment.alpha=0.7,color="blue")+ 
-  coord_sf(xlim = c(-122.3, -121.5), ylim = c(37.8, 38.5),crs=crsLONGLAT)  +
+  coord_sf(xlim = c(-122.2, -121.6), ylim = c(37.9, 38.35),crs=crsLONGLAT)  +
   annotation_north_arrow(location = "tr", which_north = "true", 
                          pad_y = unit(1.0, "in"),
                          style = north_arrow_fancy_orienteering) +
