@@ -25,24 +25,6 @@ output_root <- file.path(root,"output")
 
 ######################### Map figure denoting locations of continuous water quality stations
 
-#Read in streams shape files
-centralvalley <- st_read(file.path(data_root,"Map/cdfg_100k_2003_6/Data","cdfg_100k_2003_6.shp"))
-
-# Subset just the Sacramento and San Joaquin tributaries
-centralvalley
-sort(unique(centralvalley$DOWN_NAME))
-sort(unique(centralvalley$NAME))
-vec=data.frame(NAME=sort(unique(centralvalley$NAME)))
-
-sac <- subset(centralvalley, grepl("Sacramento River", centralvalley$NAME))
-sac_down <- subset(centralvalley, grepl("Sacramento River", centralvalley$DOWN_NAME))
-sort(unique(sac_down$NAME))
-
-sj <- subset(centralvalley, grepl("San Joaquin River", centralvalley$NAME))
-sj_down <- subset(centralvalley, grepl("San Joaquin River", centralvalley$DOWN_NAME))
-
-yuba <- subset(centralvalley, grepl("Yuba River", centralvalley$NAME))
-
 #Read in bay shape files
 CountyWater <- st_read(file.path(data_root,"Map/DJFMP Water bodies","CountyWaterforDJFMPMap.shp"))
 
@@ -71,9 +53,12 @@ GZL_station<-data.frame(station_id="GZL",
 MAL_station<-data.frame(station_id="MAL",
                         Latitude=paste(CDEC_StationInfo('MAL') %>% extract2(1) %>% select(Latitude)),
                         Longitude=paste(CDEC_StationInfo('MAL') %>% extract2(1) %>% select(Longitude)))
-SDI_station<-data.frame(station_id="SDI",
-                        Latitude=paste(CDEC_StationInfo('SDI') %>% extract2(1) %>% select(Latitude)),
-                        Longitude=paste(CDEC_StationInfo('SDI') %>% extract2(1) %>% select(Longitude)))
+
+#Remove SDI station for 2021 since it lacks data during summer-fall 2021
+#SDI_station<-data.frame(station_id="SDI",
+#                        Latitude=paste(CDEC_StationInfo('SDI') %>% extract2(1) %>% select(Latitude)),
+#                        Longitude=paste(CDEC_StationInfo('SDI') %>% extract2(1) %>% select(Longitude)))
+
 RVB_station<-data.frame(station_id="RVB",
                         Latitude=paste(CDEC_StationInfo('RVB') %>% extract2(1) %>% select(Latitude)),
                         Longitude=paste(CDEC_StationInfo('RVB') %>% extract2(1) %>% select(Longitude)))
@@ -84,10 +69,8 @@ GZB_station<-data.frame(station_id="GZB",
 GZM_station<-data.frame(station_id="GZM",
                         Latitude=paste(CDEC_StationInfo('GZM') %>% extract2(1) %>% select(Latitude)),
                         Longitude=paste(CDEC_StationInfo('GZM') %>% extract2(1) %>% select(Longitude)))
-##Placeholder for Tule Red
-#TR_station<-
 
-CDEC_stations<-bind_rows(HUN_station,BDL_station,NSL_station,GZL_station,MAL_station,SDI_station,RVB_station,GZB_station,GZM_station)
+CDEC_stations<-bind_rows(HUN_station,BDL_station,NSL_station,GZL_station,MAL_station,RVB_station,GZB_station,GZM_station)
 
 #Fix the longitude information
 CDEC_stations$Longitude<-as.numeric(CDEC_stations$Longitude)
@@ -113,9 +96,6 @@ df.SP$Longitude<-CDEC_stations$Longitude
 
 #Create the map figure
 water_quality_map<-ggplot() + theme_bw()+
-  geom_sf(data = sac, fill = 'grey', lwd = 0.5, color='black') + geom_sf(data = sac_down, fill = 'grey', lwd = 0.5, color='black') +
-  geom_sf(data = sj, fill = 'grey', lwd = 0.5, color='black') + geom_sf(data = sj_down, fill = 'grey', lwd = 0.5, color='black') +
-  geom_sf(data = yuba, fill = 'grey', lwd = 0.5, color='black') +
   geom_sf(data = DeltaSubregionsWater, fill = 'grey', lwd = 0.5, color='black') + 
   geom_sf(data = CountyWater, fill = 'grey', lwd = 0.5, color='black') + 
   geom_sf(data = bay, fill = 'grey', lwd = 0.5, color='black') +
@@ -155,7 +135,7 @@ end_date<-"2021-10-31"
 #Salinity
 GZL_cond <- CDECquery(id='GZL', sensor=100, interval='E', start=start_date, end=end_date)
 MAL_cond <- CDECquery(id='MAL', sensor=100, interval='E', start=start_date, end=end_date)
-SDI_cond <- CDECquery(id='SDI', sensor=100, interval='E', start=start_date, end=end_date)
+#SDI_cond <- CDECquery(id='SDI', sensor=100, interval='E', start=start_date, end=end_date)
 RVB_cond <- CDECquery(id='RVB', sensor=100, interval='E', start=start_date, end=end_date)
 #National Steel, Hunters Cut, and Belden's Landing
 NSL_cond <- CDECquery(id='NSL', sensor=100, interval='E', start=start_date, end=end_date)
@@ -165,19 +145,33 @@ HUN_cond <- CDECquery(id='HUN', sensor=100, interval='E', start=start_date, end=
 GZB_cond <- CDECquery(id='GZB', sensor=100, interval='E', start=start_date, end=end_date)
 GZM_cond <- CDECquery(id='GZM', sensor=100, interval='E', start=start_date, end=end_date)
 
+
+#Tule Red data is not up online, sent by Jamel
+TRB <- read.csv(file.path(data_root,"WaterQuality","TLR 8.13.21 - 9.30.21.csv"))
+#Convert to consistent format with the rest of CDEC data
+TRB <- TRB %>% mutate(Date=as.Date(Date..MM.DD.YYYY.,"%m/%d/%Y")) %>%
+  mutate(station_id="TRB", datetime = as.POSIXct(paste(Date,Time..HH.mm.ss.)))
+
+str(TRB)
+#Create conductivity data for TRB
+TRB_cond<- TRB %>% rename(value=SpCond.µS.cm) %>% select(station_id,datetime,value)
+
 #Combine Data
-SalinityData<-rbind(GZL_cond,MAL_cond,SDI_cond,RVB_cond,NSL_cond,BDL_cond,HUN_cond,GZB_cond,GZM_cond)
-remove(GZL_cond,MAL_cond,SDI_cond,RVB_cond,NSL_cond,BDL_cond,HUN_cond,GZB_cond,GZM_cond)
+SalinityData<-bind_rows(GZL_cond,MAL_cond,RVB_cond,NSL_cond,BDL_cond,HUN_cond,GZB_cond,GZM_cond,TRB_cond)
+
+remove(GZL_cond,MAL_cond,RVB_cond,NSL_cond,BDL_cond,HUN_cond,GZB_cond,GZM_cond,TRB_cond)
 
 #Convert conductivity to ppt (assuming conductivity adjusted to temp of 25 C)
 SalinityData$ppt<-ec2pss(SalinityData$value/1000, t=25)
 str(SalinityData)
 SalinityData$station_id<-as.factor(SalinityData$station_id)
+
 #Order the factor
-SalinityData$station_id <- ordered(SalinityData$station_id, levels = c("HUN", "BDL", "NSL","GZL","MAL","SDI","RVB","GZB","GZM"))
+SalinityData$station_id <- ordered(SalinityData$station_id, levels = c("GZM","HUN", "BDL", "NSL","GZL","GZB","TRB","MAL","RVB"))
+unique(SalinityData$station_id)
 
 #Create figure
-plot_salinity <- ggplot2::ggplot(data=SalinityData, ggplot2::aes(x=datetime, y=ppt))+ facet_wrap(~ station_id)+
+plot_salinity <- ggplot2::ggplot(data=SalinityData, ggplot2::aes(x=datetime, y=ppt))+ facet_wrap(~ station_id, ncol=4)+
   ggplot2::theme_bw()+
   ggplot2::geom_point(alpha=0.2)+
   ggplot2::geom_smooth(method = 'loess',se=FALSE,span = 0.3)+
@@ -196,8 +190,8 @@ plot_salinity
 png(filename=file.path(output_root,"Figure_Salinity_stations.png"),
     type="cairo",
     units="in", 
-    width=8, #10*1, 
-    height=6, #22*1, 
+    width=10, #10*1, 
+    height=5, #22*1, 
     pointsize=5, #12, 
     res=300)
 print(plot_salinity)
@@ -207,31 +201,38 @@ dev.off()
 
 ###########
 #Temperature
-GZL_temp <- CDECquery(id='GZL', sensor=25, interval='E', start='2020-06-01', end='2020-10-31')
-MAL_temp <- CDECquery(id='MAL', sensor=25, interval='E', start='2020-06-01', end='2020-10-31')
-SDI_temp <- CDECquery(id='SDI', sensor=25, interval='E', start='2020-06-01', end='2020-10-31')
-RVB_temp <- CDECquery(id='RVB', sensor=25, interval='H', start='2020-06-01', end='2020-10-31')
+GZL_temp <- CDECquery(id='GZL', sensor=25, interval='E', start=start_date, end=end_date)
+MAL_temp <- CDECquery(id='MAL', sensor=25, interval='E', start=start_date, end=end_date)
+#SDI_temp <- CDECquery(id='SDI', sensor=25, interval='E', start=start_date, end=end_date)
+RVB_temp <- CDECquery(id='RVB', sensor=25, interval='H', start=start_date, end=end_date)
 #National Steel, Hunters Cut, and Belden's Landing
-NSL_temp <- CDECquery(id='NSL', sensor=25, interval='E', start='2020-06-01', end='2020-10-31')
-BDL_temp <- CDECquery(id='BDL', sensor=25, interval='E', start='2020-06-01', end='2020-10-31')
-HUN_temp <- CDECquery(id='HUN', sensor=25, interval='E', start='2020-06-01', end='2020-10-31')
+NSL_temp <- CDECquery(id='NSL', sensor=25, interval='E', start=start_date, end=end_date)
+BDL_temp <- CDECquery(id='BDL', sensor=25, interval='E', start=start_date, end=end_date)
+HUN_temp <- CDECquery(id='HUN', sensor=25, interval='E', start=start_date, end=end_date)
+#New data for 2021
+GZB_temp <- CDECquery(id='GZB', sensor=25, interval='E', start=start_date, end=end_date)
+GZM_temp <- CDECquery(id='GZM', sensor=25, interval='E', start=start_date, end=end_date)
+
+#Create conductivity data for TRB
+TRB_temp<- TRB %>% rename(value=Temp..C) %>% select(station_id,datetime,value)
 
 #Combine Data
-TemperatureData<-rbind(GZL_temp,MAL_temp,SDI_temp,RVB_temp,NSL_temp,BDL_temp,HUN_temp)
-remove(GZL_temp,MAL_temp,SDI_temp,RVB_temp,NSL_temp,BDL_temp,HUN_temp)
+TemperatureData<-bind_rows(GZL_temp,MAL_temp,RVB_temp,NSL_temp,BDL_temp,HUN_temp,GZB_temp,GZM_temp,TRB_temp)
+
+remove(GZL_temp,MAL_temp,RVB_temp,NSL_temp,BDL_temp,HUN_temp,GZB_temp,GZM_temp,TRB_temp)
 
 #Convert Fanrenheit to Celsius
-TemperatureData$temperature<-(TemperatureData$value-32)*(5/9)
+TemperatureData$temperature<-ifelse(TemperatureData$station_id=="TRB",TemperatureData$value,(TemperatureData$value-32)*(5/9))
 
 TemperatureData$station_id<-as.factor(TemperatureData$station_id)
 #Order the factor
-TemperatureData$station_id <- ordered(TemperatureData$station_id, levels = c("HUN", "BDL", "NSL","GZL","MAL","SDI","RVB"))
+TemperatureData$station_id <- ordered(TemperatureData$station_id, levels = c("GZM","HUN", "BDL", "NSL","GZL","GZB","TRB","MAL","RVB"))
 
 #Temperature limit in BiOp is 75 F
 (75-32)*(5/9)
 
 #Create figure
-plot_temperature <- ggplot2::ggplot(data=TemperatureData, ggplot2::aes(x=datetime, y=temperature))+ facet_wrap(~ station_id)+
+plot_temperature <- ggplot2::ggplot(data=TemperatureData, ggplot2::aes(x=datetime, y=temperature))+ facet_wrap(~ station_id,ncol=4)+
   ggplot2::theme_bw()+
   ggplot2::geom_point(alpha=0.2)+
   ggplot2::geom_smooth(method = 'loess',se=FALSE,span = 0.3)+
@@ -251,8 +252,8 @@ plot_temperature
 png(filename=file.path(output_root,"Figure_Temperature_stations.png"),
     type="cairo",
     units="in", 
-    width=8, #10*1, 
-    height=6, #22*1, 
+    width=10, #10*1, 
+    height=5, #22*1, 
     pointsize=5, #12, 
     res=300)
 print(plot_temperature)
@@ -262,29 +263,35 @@ dev.off()
 #Turbidity
 
 #SDI is a USGS station, so labeled as FNU
-GZL_turb <- CDECquery(id='GZL', sensor=27, interval='E', start='2020-06-01', end='2020-10-31')
-MAL_turb <- CDECquery(id='MAL', sensor=27, interval='E', start='2020-06-01', end='2020-10-31')
-SDI_turb <- CDECquery(id='SDI', sensor=221, interval='E', start='2020-06-01', end='2020-10-31')
-RVB_turb <- CDECquery(id='RVB', sensor=27, interval='E', start='2020-06-01', end='2020-10-31')
+GZL_turb <- CDECquery(id='GZL', sensor=27, interval='E', start=start_date, end=end_date)
+MAL_turb <- CDECquery(id='MAL', sensor=27, interval='E', start=start_date, end=end_date)
+#SDI_turb <- CDECquery(id='SDI', sensor=221, interval='E', start=start_date, end=end_date)
+RVB_turb <- CDECquery(id='RVB', sensor=27, interval='E', start=start_date, end=end_date)
 #National Steel, Hunters Cut, and Belden's Landing
-NSL_turb <- CDECquery(id='NSL', sensor=27, interval='E', start='2020-06-01', end='2020-10-31')
-BDL_turb <- CDECquery(id='BDL', sensor=27, interval='E', start='2020-06-01', end='2020-10-31')
-HUN_turb <- CDECquery(id='HUN', sensor=27, interval='E', start='2020-06-01', end='2020-10-31')
+NSL_turb <- CDECquery(id='NSL', sensor=27, interval='E', start=start_date, end=end_date)
+BDL_turb <- CDECquery(id='BDL', sensor=27, interval='E', start=start_date, end=end_date)
+HUN_turb <- CDECquery(id='HUN', sensor=27, interval='E', start=start_date, end=end_date)
+#New data for 2021
+GZB_turb <- CDECquery(id='GZB', sensor=27, interval='E', start=start_date, end=end_date)
+GZM_turb <- CDECquery(id='GZM', sensor=221, interval='E', start=start_date, end=end_date)
+
+#Create turbidity data for TRB
+TRB_turb <- TRB %>% rename(value=Turbidity.FNU) %>% select(station_id,datetime,value)
 
 #Combine Data
-TurbidityData<-rbind(GZL_turb,MAL_turb,SDI_turb,NSL_turb,BDL_turb,HUN_turb,RVB_turb)
-remove(GZL_turb,MAL_turb,SDI_turb,NSL_turb,BDL_turb,HUN_turb,RVB_turb)
+TurbidityData<-bind_rows(GZL_turb,MAL_turb,NSL_turb,BDL_turb,HUN_turb,RVB_turb,GZB_turb,GZM_turb,TRB_turb)
+remove(GZL_turb,MAL_turb,NSL_turb,BDL_turb,HUN_turb,RVB_turb,GZB_turb,GZM_turb,TRB_turb)
 
 TurbidityData$station_id<-as.factor(TurbidityData$station_id)
 #Order the factor
-TurbidityData$station_id <- ordered(TurbidityData$station_id, levels = c("HUN", "BDL", "NSL","GZL","MAL","SDI","RVB"))
+TurbidityData$station_id <- ordered(TurbidityData$station_id, levels = c("GZM","HUN", "BDL", "NSL","GZL","GZB","TRB","MAL","RVB"))
 
 #Calculate number of observations of NTU >100
 NTUover100<- TurbidityData %>% filter(value>100)
 nrow(NTUover100)/nrow(TurbidityData)*100
 
 #Create figure
-plot_turbidity <- ggplot2::ggplot(data=TurbidityData, ggplot2::aes(x=datetime, y=value))+ facet_wrap(~ station_id)+
+plot_turbidity <- ggplot2::ggplot(data=TurbidityData, ggplot2::aes(x=datetime, y=value))+ facet_wrap(~ station_id, ncol=4)+
   ggplot2::theme_bw()+
   ggplot2::geom_point(alpha=0.2)+
   ggplot2::geom_smooth(method = 'loess',se=FALSE,span=0.3)+
@@ -296,7 +303,7 @@ plot_turbidity <- ggplot2::ggplot(data=TurbidityData, ggplot2::aes(x=datetime, y
                  strip.text = element_text(size = 7),
                  strip.background = element_rect(size=0.3))+
   ggplot2::geom_hline(yintercept=12, linetype="dashed", color = "red")+
-  ggplot2::ylim(0,100)+
+  ggplot2::ylim(0,150)+
   ggplot2::ylab("Turbidity (NTU)")
 plot_turbidity
 
@@ -304,8 +311,8 @@ plot_turbidity
 png(filename=file.path(output_root,"Figure_Turbidity_stations.png"),
     type="cairo",
     units="in", 
-    width=8, #10*1, 
-    height=6, #22*1, 
+    width=10, #10*1, 
+    height=5, #22*1, 
     pointsize=5, #12, 
     res=300)
 print(plot_turbidity)
