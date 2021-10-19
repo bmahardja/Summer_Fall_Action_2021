@@ -24,32 +24,22 @@ data_dayflow$julianday<-yday(data_dayflow$Date)
 #Add water year to dayflow
 data_dayflow$WY<-as.numeric(ifelse(month(data_dayflow$Date)>9,data_dayflow$Year+1,data_dayflow$Year))
 
-#################### Add 2020 data
-#According to Rosemary Hartman (DWR), Dayflow data can't be made available until 2021
-#She said to use the following instead:
+#################### Add 2021 data
+#Load WY2021 Net Delta Outflow Index (NDOI) as given to Rosemary from Jessie Cheng:Jie.Cheng@water.ca.gov
 
-#I think Net Delta Outflow is CDEC station code DTO
-#https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=DTO
 
-#and X2 is CX2
-#https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=CX2
-
-DTO_2021 <- CDECquery(id='DTO', sensor=23, interval='D', start='2020-10-01', end='2021-10-31')
-DTO_2021$Date <- as.Date(DTO_2021$datetime,"%Y-%m-%d")
+NDOI_2021 <- read.csv(file.path(data_root, "Dayflow", "NDOI_WY2021.csv"))
+NDOI_2021$Date <- as.Date(NDOI_2021$Date,"%m/%d/%Y")
 
 #Edit 2021 data from CDEC to match Dayflow
-data_outflow_2021<-DTO_2021 %>% mutate(OUT=value,WY=water_year,Year=year) %>% select(Date,OUT,Year,WY)
+data_outflow_2021<-NDOI_2021 %>% mutate(OUT=NDOIcfs,WY=2021,Year=year(Date)) %>% select(Date,OUT,Year,WY)
 data_outflow_2021$Month<-month(data_outflow_2021$Date)
-
-#Errors in DTO (negative values) for 2021
-#Fix by replacing with 2000 cfs for now (the lowest value in Summer-fall 2021 so far aside from negative values)
-data_outflow_2021$OUT<-ifelse(data_outflow_2021$OUT<0,2000,data_outflow_2021$OUT)
 
 #Add 2021 to the dayflow data
 data_dayflow_added <- dplyr::bind_rows(data_dayflow,data_outflow_2021)
 #Order full data set by date
 data_dayflow_added <- data_dayflow_added[order(data_dayflow_added$Date),]
-#Locate start row for 2020 WY data
+#Locate start row for 2021 WY data
 which(data_dayflow_added$Date=="2020-10-01")
 #8767
 
