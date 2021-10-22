@@ -320,10 +320,18 @@ dev.off()
 
 #########################Percent of time suitable for Delta Smelt
 
+#Only keep the stations with good data
+
 #Calculate percent of time water quality was suitable for Delta Smelt
-Salinity_habitat_data<- SalinityData %>% mutate(Date=as.Date(datetime),Parameter="Salinity", PercentSuitable=ifelse(ppt<=6,1,0)) %>% group_by(station_id,Date,Parameter) %>% summarise(PercentSuitable=mean(PercentSuitable))
-Temperature_habitat_data<- TemperatureData %>% mutate(Date=as.Date(datetime),Parameter="Temperature", PercentSuitable=ifelse(temperature<=23.88889,1,0)) %>% group_by(station_id,Date,Parameter) %>% summarise(PercentSuitable=mean(PercentSuitable))
-Turbidity_habitat_data<- TurbidityData %>% mutate(Date=as.Date(datetime),Parameter="Turbidity", PercentSuitable=ifelse(value>=12,1,0)) %>% group_by(station_id,Date,Parameter) %>% summarise(PercentSuitable=mean(PercentSuitable))
+Salinity_habitat_data<- SalinityData %>% 
+  filter(station_id %in% c("GZL","GZM","HUN","BDL","NSL","MAL","RVB")) %>%
+  mutate(Date=as.Date(datetime),Parameter="Salinity", PercentSuitable=ifelse(ppt<=6,1,0)) %>% group_by(station_id,Date,Parameter) %>% summarise(PercentSuitable=mean(PercentSuitable))
+Temperature_habitat_data<- TemperatureData %>% 
+  filter(station_id %in% c("GZL","GZM","HUN","BDL","NSL","MAL","RVB")) %>%
+  mutate(Date=as.Date(datetime),Parameter="Temperature", PercentSuitable=ifelse(temperature<=23.88889,1,0)) %>% group_by(station_id,Date,Parameter) %>% summarise(PercentSuitable=mean(PercentSuitable))
+Turbidity_habitat_data<- TurbidityData %>%
+  filter(station_id %in% c("GZL","GZM","HUN","BDL","NSL","MAL","RVB")) %>%
+  mutate(Date=as.Date(datetime),Parameter="Turbidity", PercentSuitable=ifelse(value>=12,1,0)) %>% group_by(station_id,Date,Parameter) %>% summarise(PercentSuitable=mean(PercentSuitable))
 
 Salinity_habitat_data$station_id<-as.character(Salinity_habitat_data$station_id)
 Temperature_habitat_data$station_id<-as.character(Temperature_habitat_data$station_id)
@@ -336,7 +344,7 @@ remove(Salinity_habitat_data,Temperature_habitat_data,Turbidity_habitat_data)
 
 Suitable_habitat$station_id<-as.factor(Suitable_habitat$station_id)
 #Order the factor
-Suitable_habitat$station_id <- ordered(Suitable_habitat$station_id, levels = c("HUN", "BDL", "NSL","GZL","MAL","SDI","RVB"))
+Suitable_habitat$station_id <- ordered(Suitable_habitat$station_id, levels = c("GZL","GZM","HUN","BDL","NSL","MAL","RVB"))
 
 
 #Create figure
