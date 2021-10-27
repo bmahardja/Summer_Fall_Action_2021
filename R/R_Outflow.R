@@ -244,7 +244,7 @@ DT2021<-DT2021 %>% filter(Month %in% c(6:10))
 
 
 #################### Graph of outflow vs D-1641
-d1641<-data.frame(Month=c(6,7,8,9,10),Outflow_required=c(7100,5000,3500,3000,4000))
+d1641<-data.frame(Month=c(6,7,8,9,10),Outflow_required=c(3000,3000,3000,3000,3000))
 
 data_outflow_2021$Month=month(data_outflow_2021$Date)
 
