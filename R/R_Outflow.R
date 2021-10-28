@@ -88,6 +88,11 @@ data_dayflow_summerfall_5yrs$WY<-as.factor(data_dayflow_summerfall_5yrs$WY)
 
 data_dayflow_summerfall_5yrs$Year<-as.factor(data_dayflow_summerfall_5yrs$Year)
 
+##Quick average X2 summary for Armin
+X2_2021<- data_dayflow_added %>% filter(Year==2021&Month %in% c(6:10))
+mean(X2_2021$X2)
+#88.79056
+
 #Plot for Outflow
 plot_outflow_5yrs <- ggplot2::ggplot()+
   ggplot2::theme_bw()+
