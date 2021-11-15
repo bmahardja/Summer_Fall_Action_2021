@@ -126,13 +126,14 @@ data_djfmp_edit$Weight<-NULL
 data_djfmp_edit$Biomass[is.na(data_djfmp_edit$Biomass)] <- 0
 #Add plus count
 data_djfmp_edit$PlusCount<-ifelse(data_djfmp_edit$ForkLength==0,data_djfmp_edit$Count,0)
+data_djfmp_edit$MeasuredCount<-ifelse(data_djfmp_edit$ForkLength>0,data_djfmp_edit$Count,0)
 
 #Summarize by organism and sampling occassion
 data_djfmp_summary <- data_djfmp_edit %>% group_by(Location,StationCode,SampleDate,SampleTime,OrganismCode, CommonName) %>%
-  summarise(Count=sum(Count),Biomass=sum(Biomass),Volume=mean(Volume),PlusCount=sum(PlusCount))
+  summarise(MeasuredCount=sum(MeasuredCount),Biomass=sum(Biomass),Volume=mean(Volume),PlusCount=sum(PlusCount))
 #Multiply biomass by total count/measured count
 mean(data_djfmp_summary$Biomass)
-data_djfmp_summary$AdjustedBiomass<-data_djfmp_summary$Biomass*((data_djfmp_summary$Count+data_djfmp_summary$PlusCount)/data_djfmp_summary$Count)
+data_djfmp_summary$AdjustedBiomass<-data_djfmp_summary$Biomass*((data_djfmp_summary$MeasuredCount+data_djfmp_summary$PlusCount)/data_djfmp_summary$MeasuredCount)
 data_djfmp_summary$AdjustedBiomass[is.na(data_djfmp_summary$AdjustedBiomass)] <- 0
 
 mean(data_djfmp_summary$AdjustedBiomass)
@@ -144,7 +145,7 @@ str(data.frame(data_djfmp_summary))
 
 #Spread data wide to get zeroes
 data_djfmp_wide <- data_djfmp_summary %>% mutate(Year=year(SampleDate),Month=month(SampleDate),BPUE=AdjustedBiomass/Volume)%>%
-  select(-CommonName,-Count,-Biomass,-Volume,-PlusCount,-AdjustedBiomass)
+  select(-CommonName,-MeasuredCount,-Biomass,-Volume,-PlusCount,-AdjustedBiomass)
 
 data_djfmp_wide<-  spread(data_djfmp_wide,OrganismCode,BPUE)
 data_djfmp_wide[is.na(data_djfmp_wide)] <- 0
