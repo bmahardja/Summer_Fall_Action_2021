@@ -27,11 +27,6 @@ select_stations<-c("DS002S", "GS010E", "LP003E","MK004W", "MR010W", "MS001N","MS
 #Stations from Mahardja et al. 2017 paper
 data_djfmp_edit <- data_djfmp %>% filter(StationCode %in% select_stations, year(SampleDate)>=1995, month(SampleDate) %in% c(3:8), GearConditionCode <=2)
 
-#Change alternate station names into a single station
-levels(data_djfmp_edit$StationCode)[levels(data_djfmp_edit$StationCode)=="SR012W"] <- "SR012E"
-levels(data_djfmp_edit$StationCode)[levels(data_djfmp_edit$StationCode)=="SJ058E"] <- "SJ058W"
-levels(data_djfmp_edit$StationCode)[levels(data_djfmp_edit$StationCode)=="MS001A"] <- "MS001N"
-levels(data_djfmp_edit$StationCode)[levels(data_djfmp_edit$StationCode)=="WD002E"] <- "WD002W"
 
 #List of different equations for transforming length to weights (to grams)
 americanshad_function<-function(x){(0.0074*((x)^3.09))/1000} #Kimmerer American Shad
@@ -138,10 +133,26 @@ data_djfmp_summary$AdjustedBiomass[is.na(data_djfmp_summary$AdjustedBiomass)] <-
 
 mean(data_djfmp_summary$AdjustedBiomass)
 
+unique(data_djfmp_summary$StationCode)
 #Fill volume with mean volume
 data_djfmp_summary$Volume<-ifelse(is.na(data_djfmp_summary$Volume),mean(data_djfmp_summary$Volume, na.rm = T),data_djfmp_summary$Volume)
 summary(data_djfmp_summary$Volume)
 str(data.frame(data_djfmp_summary))
+
+#Change alternate station names into a single station
+data_djfmp_summary$StationCode<-as.factor(data_djfmp_summary$StationCode)
+levels(data_djfmp_summary$StationCode)[levels(data_djfmp_summary$StationCode)=="SR012W"] <- "SR012E"
+levels(data_djfmp_summary$StationCode)[levels(data_djfmp_summary$StationCode)=="SJ058E"] <- "SJ058W"
+levels(data_djfmp_summary$StationCode)[levels(data_djfmp_summary$StationCode)=="MS001A"] <- "MS001N"
+levels(data_djfmp_summary$StationCode)[levels(data_djfmp_summary$StationCode)=="WD002E"] <- "WD002W"
+
+#Check sampling effort
+DJFMP_seine_sampling_effort<-data_djfmp_summary %>% mutate(Year=year(SampleDate),Month=month(SampleDate)) %>% group_by(Year,Month,Location,StationCode,SampleDate,SampleTime) %>%
+  summarise(Count=sum(MeasuredCount)) %>% mutate(sample_size=1) %>% group_by(Year,Month,StationCode) %>% summarise(sample_size=sum(sample_size)) 
+
+ggplot(DJFMP_seine_sampling_effort,aes(x=Year,y=StationCode,fill=sample_size))+geom_tile()+facet_wrap(~ Month)+
+  scale_x_continuous(breaks=c(1970,1980,1990,2000,2010,2015,2020)) + labs(title= "DJFMP station sampling effort by year")
+
 
 #Spread data wide to get zeroes
 data_djfmp_wide <- data_djfmp_summary %>% mutate(Year=year(SampleDate),Month=month(SampleDate),BPUE=AdjustedBiomass/Volume)%>%
@@ -206,6 +217,7 @@ Taxa= case_when(
 annual_summary_status<-data_djfmp_annual %>% group_by(Year,Species_Status) %>% summarise(BPUE=sum(BPUE))
 
 annual_summary_taxa<-data_djfmp_annual %>% group_by(Year,Taxa) %>% summarise(BPUE=sum(BPUE))
+annual_summary_taxa$Taxa <- factor(annual_summary_taxa$Taxa, levels = c("Centrarchids", "Mississippi Silverside", "Other introduced species","Native species"))
 
 #Construct barplots
 
@@ -224,12 +236,12 @@ biomassplot_native_introduced
 biomassplot_taxa<-ggplot(annual_summary_taxa,aes(x = Year, y = BPUE, fill=Taxa,order=Taxa))+
   geom_bar(position = 'stack', stat="identity", colour="black", show_guide=TRUE)+ theme_bw() +
   theme(axis.title.y = element_text(size = rel(1.8)),axis.title.x = element_text(size = rel(1.8), angle = 00),
-        axis.text.x = element_text(size=14, color = "black",angle=45, vjust = 1, hjust=1),axis.text.y = element_text(size=23, color = "black"))+
-  labs(title=NULL, x=NULL, y=NULL)+
+        axis.text.x = element_text(size=18, color = "black",angle=45, vjust = 1, hjust=1),axis.text.y = element_text(size=18, color = "black"))+
+  labs(title=NULL, x=NULL, y=expression(paste("Biomass per volume (grams/", m^3, ")",sep = "")))+
   scale_x_continuous(breaks=seq(min(annual_summary_status$Year),max(annual_summary_status$Year),1),labels = c(1995:2019,"2020*","2021**"))+
   scale_y_continuous(breaks=seq(0,7,1))+ 
   theme(legend.title=element_blank(),legend.text=element_text(size=14),
-        legend.justification=c(1,0), legend.position=c(0.45,0.65),legend.background = element_rect(colour = "black"))+
+        legend.justification=c(1,0), legend.position=c(0.45,0.75),legend.background = element_rect(colour = "black"))+
   scale_fill_manual(name="Taxon",values=c("green2","gold1","darkorange","darkblue"))
 biomassplot_taxa
 
@@ -238,11 +250,11 @@ biomassplot_taxa
 tiff(filename=file.path(output_root,"Figure_NearshoreFishes.tiff"),
      type="cairo",
      units="in", 
-     width=20, #10*1, 
-     height=10, #22*1, 
+     width=14, #10*1, 
+     height=8, #22*1, 
      pointsize=5, #12, 
      res=600,
      compression="lzw")
-grid.arrange(biomassplot_native_introduced, biomassplot_taxa, ncol=2,nrow=1)
-
+#grid.arrange(biomassplot_native_introduced, biomassplot_taxa, ncol=2,nrow=1)
+biomassplot_taxa
 dev.off()
