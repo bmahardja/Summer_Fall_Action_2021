@@ -173,7 +173,7 @@ data_djfmp_annual<- data_djfmp_annual %>% mutate(Species_Status= case_when(
                     "yellowfin goby","black bullhead","wakasagi","white catfish","white crappie","bass unknown",
                     "rainwater killifish","channel catfish","brown bullhead",
                     "spotted bass","unid fish","yellow bullhead","Shokihaze goby",
-                    "warmouth","redeye bass","Bluefin Killifish" ) ~ "Introduced",
+                    "warmouth","redeye bass","Bluefin Killifish","no catch" ) ~ "Introduced",
   CommonName %in% c("California roach","Chinook salmon","Delta smelt","hitch","hardhead","lamprey unknown",
                     "longfin smelt","prickly sculpin","Pacific staghorn sculpin",
                     "steelhead trout","Sacramento pikeminnow","Sacramento sucker","Sacramento blackfish",
@@ -200,7 +200,7 @@ Taxa= case_when(
                     "steelhead trout","Sacramento pikeminnow","Sacramento sucker","Sacramento blackfish",
                     "splittail","tule perch","threespine stickleback","starry flounder","striped mullet",
                     "minnow unknown","arrow goby","Pacific herring","river lamprey","bay goby","cheekspot goby",
-                    "topsmelt") ~ "Native species"
+                    "topsmelt","no catch") ~ "Native species"
 ))
 
 annual_summary_status<-data_djfmp_annual %>% group_by(Year,Species_Status) %>% summarise(BPUE=sum(BPUE))
@@ -210,25 +210,39 @@ annual_summary_taxa<-data_djfmp_annual %>% group_by(Year,Taxa) %>% summarise(BPU
 #Construct barplots
 
 biomassplot_native_introduced<-ggplot(annual_summary_status,aes(x = Year, y = BPUE, fill=Species_Status,order=Species_Status))+
-  geom_area( position = 'stack', colour="black", show_guide=FALSE)+ theme_bw() +
+  geom_bar(position = 'stack', stat="identity", colour="black", show_guide=TRUE)+ theme_bw() +
   theme(axis.title.y = element_text(size = rel(1.8)),axis.title.x = element_text(size = rel(1.8), angle = 00),
-        axis.text.x = element_text(size=14, color = "black"),axis.text.y = element_text(size=23, color = "black"))+
-  labs(list(title=NULL, x=NULL, y=expression(paste("Biomass per volume (grams/", m^3, ")",sep = ""))))+
-  scale_x_continuous(breaks=seq(min(annual_summary_status$Year),max(annual_summary_status$Year),1))+
-  #scale_y_continuous(breaks=seq(0,7,1),expand=c(0,0))+ 
-  theme(legend.title=element_text(size=20),legend.text=element_text(size=20),
+        axis.text.x = element_text(size=14, color = "black",angle=45, vjust = 1, hjust=1),axis.text.y = element_text(size=23, color = "black"))+
+  labs(title=NULL, x=NULL, y=expression(paste("Biomass per volume (grams/", m^3, ")",sep = "")))+
+  scale_x_continuous(breaks=seq(min(annual_summary_status$Year),max(annual_summary_status$Year),1),labels = c(1995:2019,"2020*","2021**"))+
+  scale_y_continuous(breaks=seq(0,7,1))+ 
+  theme(legend.title=element_blank(),legend.text=element_text(size=14),
         legend.justification=c(1,0), legend.position=c(0.35,0.65),legend.background = element_rect(colour = "black"))+
   scale_fill_manual(name="Status",values=c("red","blue"))
 biomassplot_native_introduced
 
 biomassplot_taxa<-ggplot(annual_summary_taxa,aes(x = Year, y = BPUE, fill=Taxa,order=Taxa))+
-  geom_area( position = 'stack', colour="black")+ theme_bw() +
+  geom_bar(position = 'stack', stat="identity", colour="black", show_guide=TRUE)+ theme_bw() +
   theme(axis.title.y = element_text(size = rel(1.8)),axis.title.x = element_text(size = rel(1.8), angle = 00),
-        axis.text.x = element_text(size=14, color = "black"),axis.text.y = element_text(size=23, color = "black"))+
-  labs(list(title=NULL, x=NULL, y=expression(paste("Biomass per volume (grams/", m^3, ")",sep = ""))))+
-  scale_x_continuous(breaks=seq(min(annual_summary_status$Year),max(annual_summary_status$Year),1))+
-  scale_y_continuous(breaks=seq(0,7,1),expand=c(0,0))+ 
-  theme(legend.title=element_text(size=20),legend.text=element_text(size=20),
-        legend.justification=c(1,0), legend.position=c(0.35,0.65),legend.background = element_rect(colour = "black"))+
+        axis.text.x = element_text(size=14, color = "black",angle=45, vjust = 1, hjust=1),axis.text.y = element_text(size=23, color = "black"))+
+  labs(title=NULL, x=NULL, y=NULL)+
+  scale_x_continuous(breaks=seq(min(annual_summary_status$Year),max(annual_summary_status$Year),1),labels = c(1995:2019,"2020*","2021**"))+
+  scale_y_continuous(breaks=seq(0,7,1))+ 
+  theme(legend.title=element_blank(),legend.text=element_text(size=14),
+        legend.justification=c(1,0), legend.position=c(0.45,0.65),legend.background = element_rect(colour = "black"))+
   scale_fill_manual(name="Taxon",values=c("green2","gold1","darkorange","darkblue"))
 biomassplot_taxa
+
+
+#Print figure
+tiff(filename=file.path(output_root,"Figure_NearshoreFishes.tiff"),
+     type="cairo",
+     units="in", 
+     width=20, #10*1, 
+     height=10, #22*1, 
+     pointsize=5, #12, 
+     res=600,
+     compression="lzw")
+grid.arrange(biomassplot_native_introduced, biomassplot_taxa, ncol=2,nrow=1)
+
+dev.off()
