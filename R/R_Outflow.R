@@ -4,7 +4,8 @@ library(grid)
 library(gridExtra)
 library(gtable)
 library(sharpshootR)
-
+library(RcppRoll)
+library(ggpubr)
 
 #Path to local drive
 root <- "~/GitHub/Summer_Fall_Action_2021"
@@ -249,17 +250,25 @@ DT2021<-DT2021 %>% filter(Month %in% c(6:10))
 
 
 #################### Graph of outflow vs D-1641
-d1641<-data.frame(Month=c(6,7,8,9,10),Outflow_required=c(3000,3000,3000,3000,3000))
+
+
+
+d1641<-data.frame(Month=c(5,6,7,8,9,10),Outflow_required=c(3000,3000,3000,3000,3000,3000))
 
 data_outflow_2021$Month=month(data_outflow_2021$Date)
 
-d1641_2021<-left_join(data_outflow_2021,d1641) %>% filter(Month %in% c(6:10), Year==2021)
+d1641_2021<-left_join(data_outflow_2021,d1641) %>% filter(Month %in% c(5:10), Year==2021)
 
-#Plot for X2
+d1641_2021$d14_rollavg <- roll_mean(d1641_2021$OUT, n = 14, align = "right", fill = NA)
+
+d1641_2021_june <- d1641_2021 %>% filter(Month==6)
+
+  
+#D1641 plot for June (14-day rolling average)
 plot_d1641 <- ggplot2::ggplot()+
   ggplot2::theme_bw()+
-  ggplot2::geom_line(data=d1641_2021, ggplot2::aes(x=as.Date(paste(2021,strftime(Date,format="%m-%d"),sep="-")), y=OUT),color="black",size=0.6)+
-  ggplot2::geom_line(data=d1641_2021, ggplot2::aes(x=as.Date(paste(2021,strftime(Date,format="%m-%d"),sep="-")), y=Outflow_required),color="red",size=2,alpha=0.5)+
+  ggplot2::geom_line(data=d1641_2021_june, ggplot2::aes(x=as.Date(paste(2021,strftime(Date,format="%m-%d"),sep="-")), y=d14_rollavg),color="black",size=0.6)+
+  ggplot2::geom_line(data=d1641_2021_june, ggplot2::aes(x=as.Date(paste(2021,strftime(Date,format="%m-%d"),sep="-")), y=Outflow_required),color="red",size=2,alpha=0.5)+
   #Need to change below when 2020 data is in
   ggplot2::theme(plot.title=element_text(size=9), 
                  axis.text.x=element_text(size=9, color="black"), 
@@ -270,17 +279,45 @@ plot_d1641 <- ggplot2::ggplot()+
                  legend.position = "none",
                  strip.background = element_rect(size=0.3))+
   ggplot2::ylab(bquote("Delta"~outflow~"("*ft^3*"/s)"))+
-  ggplot2::xlab("Date")
+  ggplot2::xlab("")
 plot_d1641
+
+
+#D1641 plot for July to September (monthly averages)
+d1641_2021_jul_sep <- d1641_2021 %>% mutate(Month_name=format(Date,"%B")) %>% group_by(Month,Month_name) %>% 
+  summarise(OUT=mean(OUT),Outflow_required=mean(Outflow_required)) %>% filter(Month>6)
+
+d1641_2021_jul_sep$Month_name<-factor(d1641_2021_jul_sep$Month_name, levels = c("July", "August", "September"))
+
+plot_d1641_02 <- ggplot2::ggplot(data=d1641_2021_jul_sep,ggplot2::aes(x=Month_name))+
+  ggplot2::theme_bw()+
+  ggplot2::geom_bar(data=d1641_2021_jul_sep, ggplot2::aes(y=OUT),size=0.6,stat="identity")+
+  #ggplot2::geom_line(data=d1641_2021_jul_sep, ggplot2::aes(x=as.numeric(Month_name),y=Outflow_required),color="red",size=2,alpha=0.5)+
+  ggplot2::geom_hline(yintercept = 3000,size=2,alpha=0.5,color="red")+
+  #Need to change below when 2020 data is in
+  ggplot2::theme(plot.title=element_text(size=9), 
+                 axis.text.x=element_text(size=9, color="black"), 
+                 axis.text.y = element_text(size=8, color="black"), 
+                 axis.title.x = element_text(size = 9, angle = 00), 
+                 axis.title.y = element_text(size = 9, angle = 90),
+                 strip.text = element_text(size = 7),
+                 legend.position = "none",
+                 strip.background = element_rect(size=0.3))+
+  ggplot2::ylab(bquote("Delta"~outflow~"("*ft^3*"/s)"))+
+  ggplot2::xlab("")
+plot_d1641_02
+
+plot_d1641_combined<-ggarrange(plot_d1641, plot_d1641_02, widths = c(2,1),labels=c("A","B"))
+plot_d1641_combined
 
 #Print figure
 tiff(filename=file.path(output_root,"Figure_Dayflow_D1641.tiff"),
      type="cairo",
      units="in", 
      width=8, #10*1, 
-     height=6, #22*1, 
+     height=4, #22*1, 
      pointsize=5, #12, 
      res=600,
      compression="lzw")
-print(plot_d1641)
+print(plot_d1641_combined)
 dev.off()
